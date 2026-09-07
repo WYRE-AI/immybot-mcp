@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
-    "@wyre-ai/node-immybot": "^1.0.0"
+    "@wyre-ai/node-immybot": "^1.1.0"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
