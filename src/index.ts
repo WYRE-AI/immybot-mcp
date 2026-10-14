@@ -8,7 +8,7 @@
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createMcpServer } from './server.js';
-import { createHttpServer } from './http.js';
+import { startHttpServer } from './http.js';
 import { logger } from './utils/logger.js';
 import { testConnection } from './utils/client.js';
 
@@ -23,13 +23,10 @@ async function main() {
   });
 
   if (transport === 'http') {
-    // HTTP transport for gateway mode
-    const httpServer = createHttpServer();
-    const port = parseInt(process.env.MCP_HTTP_PORT || '8080', 10);
-
-    httpServer.listen(port, () => {
-      logger.info('HTTP server listening', { port, endpoint: `/mcp` });
-    });
+    // HTTP transport for gateway mode. startHttpServer refuses to listen
+    // unless CONDUIT_S2S_SECRET is a real secret (or the loopback-only
+    // MCP_ALLOW_INSECURE_DEV=1 bypass is set) and passes an explicit host.
+    const httpServer = await startHttpServer();
 
     // Graceful shutdown
     process.on('SIGINT', () => {

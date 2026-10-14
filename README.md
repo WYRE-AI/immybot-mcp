@@ -16,14 +16,25 @@ MCP server for ImmyBot - Windows endpoint management and software deployment aut
 
 ### Docker (Recommended)
 
+The image listens on `0.0.0.0` inside the container and defaults to `AUTH_MODE=gateway`. Publish the port on loopback and pass a real `CONDUIT_S2S_SECRET`. In gateway mode, ImmyBot credentials arrive on each request as headers; they are not read from the environment.
+
 ```bash
 docker run -d \
   --name immybot-mcp \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
+  -e CONDUIT_S2S_SECRET \
   -e AUTH_MODE=gateway \
+  -e MCP_TRANSPORT=http \
   -e MCP_HTTP_PORT=8080 \
   -e LOG_LEVEL=info \
   ghcr.io/wyre-ai/immybot-mcp:latest
+```
+
+Compose refuses to start when `CONDUIT_S2S_SECRET` is unset. The gateway service does not set `IMMYBOT_*` variables or `env_file`, so a project `.env` cannot inject static vendor credentials. It publishes `127.0.0.1:8080:8080`:
+
+```bash
+# openssl rand -hex 32 — do not use a placeholder such as changeme
+CONDUIT_S2S_SECRET="$(openssl rand -hex 32)" docker compose up
 ```
 
 ### Direct Installation
@@ -148,14 +159,21 @@ await callTool('immybot_maintenance_sessions_start', {
 
 ## Environment Variables
 
+Copy [`.env.example`](.env.example) and set the variables below.
+
 ### Gateway Mode (Docker)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `AUTH_MODE` | `direct` | Set to `gateway` for WYRE MCP Gateway |
+| `AUTH_MODE` | `direct` | Set to `gateway` for WYRE MCP Gateway. Gateway mode requires the four `x-immybot-*` credential headers on each `/mcp` request and never falls back to `IMMYBOT_*`. The Docker image and Compose default to `gateway`. |
 | `MCP_TRANSPORT` | `stdio` | Transport mode (`http` or `stdio`) |
 | `MCP_HTTP_PORT` | `8080` | HTTP server port |
+| `MCP_HTTP_HOST` | `0.0.0.0` when a real `CONDUIT_S2S_SECRET` is set and this is unset; `127.0.0.1` for the insecure-dev bypass | Bind address. A configured secret honors this value, including `0.0.0.0`, so container deploys stay reachable. The image and Compose set `0.0.0.0`. |
+| `CONDUIT_S2S_SECRET` | — | Required for HTTP. HMAC secret checked against `X-Gateway-S2S` on `/mcp`. Generate with `openssl rand -hex 32`. If empty or a known placeholder, the HTTP server logs an error and exits non-zero. The value is never logged. |
+| `MCP_ALLOW_INSECURE_DEV` | unset | Set to exactly `1` to start HTTP without `CONDUIT_S2S_SECRET`. Logs a warning, does not enforce `X-Gateway-S2S`, and binds `127.0.0.1` only. A non-loopback `MCP_HTTP_HOST` refuses to start. A placeholder secret still refuses to start. Local development only. |
 | `LOG_LEVEL` | `info` | Logging level (`debug`, `info`, `warn`, `error`) |
+
+`/health` stays unauthenticated and does not read credentials. The stdio transport does not use `CONDUIT_S2S_SECRET`.
 
 ### Direct Mode (CLI)
 
@@ -165,6 +183,32 @@ await callTool('immybot_maintenance_sessions_start', {
 | `IMMYBOT_TENANT_ID` | ✅ | Microsoft Entra tenant ID |
 | `IMMYBOT_CLIENT_ID` | ✅ | Application client ID |
 | `IMMYBOT_CLIENT_SECRET` | ✅ | Client secret |
+
+### HTTP authentication
+
+With `MCP_TRANSPORT=http` and `CONDUIT_S2S_SECRET` set, every `/mcp` request must include `X-Gateway-S2S`. The check is `verifyS2sHeader` in [`src/s2s-verify.ts`](src/s2s-verify.ts): the header value is `t=<unix seconds>,v1=<hex>`, where the hex is HMAC-SHA256 of the literal string `t=<unix seconds>` keyed with `CONDUIT_S2S_SECRET` (64 lowercase hex characters). The timestamp must be within 300 seconds of the server clock. A missing or invalid header is HTTP 401, before vendor credentials are read.
+
+```bash
+TS=$(date +%s)
+SIG=$(printf 't=%s' "$TS" | openssl dgst -sha256 -hmac "$CONDUIT_S2S_SECRET" -hex | awk '{print $NF}')
+curl -sS http://127.0.0.1:8080/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -H "X-Gateway-S2S: t=${TS},v1=${SIG}" \
+  -H 'X-ImmyBot-Instance-Subdomain: acmemsp' \
+  -H 'X-ImmyBot-Tenant-Id: 12345678-1234-1234-1234-123456789abc' \
+  -H 'X-ImmyBot-Client-Id: 87654321-4321-4321-4321-cba987654321' \
+  -H 'X-ImmyBot-Client-Secret: your-client-secret' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+In `AUTH_MODE=gateway`, those four `X-ImmyBot-*` headers are required. A request missing any of them gets HTTP 401 and does not fall back to `IMMYBOT_*` in the process environment. Direct mode (`AUTH_MODE` unset) still requires a valid `X-Gateway-S2S` header, then uses the `IMMYBOT_*` environment variables. Direct mode does not read the `X-ImmyBot-*` headers.
+
+Local HTTP without a secret is development-only. It binds `127.0.0.1` and logs a warning. A non-loopback `MCP_HTTP_HOST` (including the image default `0.0.0.0`) makes startup exit. Do not publish that port off loopback.
+
+```bash
+MCP_TRANSPORT=http MCP_ALLOW_INSECURE_DEV=1 npm start
+```
 
 ## Tools Reference
 
@@ -242,8 +286,10 @@ npm test
 ### Docker Build
 
 ```bash
-docker build -t immybot-mcp --build-arg NODE_AUTH_TOKEN=$GITHUB_TOKEN .
+docker build -t immybot-mcp --secret id=npmrc,src=$HOME/.npmrc .
 ```
+
+The checked-in Compose file is gateway mode. It requires `CONDUIT_S2S_SECRET` and does not pass static `IMMYBOT_*` credentials.
 
 ## Support
 

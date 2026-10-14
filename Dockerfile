@@ -22,10 +22,15 @@ FROM node:26-alpine
 
 WORKDIR /app
 
-# Set production environment
+# Set production environment.
+# 0.0.0.0 is the in-container bind. Startup still refuses to listen unless
+# CONDUIT_S2S_SECRET is a real secret. MCP_ALLOW_INSECURE_DEV=1 refuses to
+# start while this host is 0.0.0.0; that bypass only binds 127.0.0.1.
+# AUTH_MODE=gateway never falls back to image env vendor credentials.
 ENV NODE_ENV=production
 ENV AUTH_MODE=gateway
 ENV MCP_HTTP_PORT=8080
+ENV MCP_HTTP_HOST=0.0.0.0
 ENV LOG_LEVEL=info
 
 # Create non-root user
