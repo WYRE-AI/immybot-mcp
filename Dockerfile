@@ -19,6 +19,7 @@ RUN npm prune --omit=dev
 
 # Production stage
 FROM node:26-alpine
+RUN apk -U upgrade --no-cache
 
 WORKDIR /app
 
@@ -51,6 +52,8 @@ LABEL org.opencontainers.image.licenses=Apache-2.0
 LABEL io.modelcontextprotocol.server.name="io.github.WYRE-AI/immybot-mcp"
 
 # Switch to non-root user
+# npm is not needed at runtime; removing it clears Trivy CVEs in its bundled deps
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 USER mcp
 
 # Expose port
