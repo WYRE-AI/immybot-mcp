@@ -295,7 +295,7 @@ The checked-in Compose file is gateway mode. It requires `CONDUIT_S2S_SECRET` an
 
 - [ImmyBot API Documentation](https://docs.immy.bot/reference/api-documentation/)
 - [Microsoft Entra App Registration](https://docs.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app)
-- [WYRE MCP Gateway](https://github.com/wyre-technology/mcp-gateway)
+- [WYRE MCP Gateway](https://github.com/WYRE-AI/mcp-gateway)
 
 ## License
 
