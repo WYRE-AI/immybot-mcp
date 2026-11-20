@@ -10,7 +10,7 @@
   },
   "capabilities": {
     "tools": {
-      "description": "Comprehensive ImmyBot API integration with navigation-based tool discovery"
+      "description": "Comprehensive ImmyBot API integration with a flat tool list"
     }
   },
   "domains": [
@@ -44,12 +44,9 @@
       ]
     }
   ],
-  "navigation": {
-    "type": "decision-tree",
+  "status": {
     "tools": [
-      "immybot_navigate",
-      "immybot_status",
-      "immybot_back"
+      "immybot_status"
     ]
   },
   "authentication": {

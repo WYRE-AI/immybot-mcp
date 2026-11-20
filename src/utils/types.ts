@@ -28,16 +28,3 @@ export interface DomainHandler {
     extra?: RequestHandlerExtra
   ): Promise<CallToolResult>;
 }
-
-/**
- * Navigation state for decision tree
- */
-export type NavigationState = 'root' | 'computers' | 'software' | 'deployments' | 'scripts' | 'tenants' | 'maintenance_sessions' | 'tasks';
-
-/**
- * MCP server context
- */
-export interface ServerContext {
-  currentDomain?: string;
-  navigationState: NavigationState;
-}
