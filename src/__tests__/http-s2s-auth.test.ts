@@ -461,7 +461,7 @@ describe('HTTP /mcp authentication', () => {
         result?: { content?: Array<{ text?: string }> };
       };
       const text = payload.result?.content?.[0]?.text ?? '';
-      expect(text).toContain('Main Navigation');
+      expect(text).toContain('call them directly by name');
       expect(runSpy).toHaveBeenCalledWith({
         instanceSubdomain: 'header-subdomain',
         tenantId: 'header-tenant',

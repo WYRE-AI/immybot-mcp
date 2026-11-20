@@ -1,101 +1,49 @@
-import type { DomainHandler, NavigationState } from '../utils/types.js';
-import { getCurrentState } from './navigation.js';
+import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+import type { DomainHandler } from '../utils/types.js';
+import { statusHandler } from './status.js';
+import { computersHandler } from './computers.js';
+import { softwareHandler } from './software.js';
+import { deploymentsHandler } from './deployments.js';
+import { scriptsHandler } from './scripts.js';
+import { tenantsHandler } from './tenants.js';
+import { maintenanceSessionsHandler } from './maintenance_sessions.js';
+import { tasksHandler } from './tasks.js';
 
 /**
- * Domain registry with lazy loading
+ * Flat tool registry. Every tool is listed on every `tools/list`, with no
+ * per-session navigation state, and calls route by tool name.
  */
+const HANDLERS: DomainHandler[] = [
+  statusHandler,
+  computersHandler,
+  softwareHandler,
+  deploymentsHandler,
+  scriptsHandler,
+  tenantsHandler,
+  maintenanceSessionsHandler,
+  tasksHandler,
+];
 
-let domainHandlers: Record<string, DomainHandler> | null = null;
+/** All tools across every domain. */
+export function getAllTools(): Tool[] {
+  return HANDLERS.flatMap((handler) => handler.getTools());
+}
 
-async function loadDomainHandlers(): Promise<Record<string, DomainHandler>> {
-  if (domainHandlers) {
-    return domainHandlers;
-  }
-
-  // Lazy load all domain handlers
-  const [
-    navigation,
-    computers,
-    software,
-    deployments,
-    scripts,
-    tenants,
-    maintenanceSessions,
-    tasks
-  ] = await Promise.all([
-    import('./navigation.js'),
-    import('./computers.js'),
-    import('./software.js'),
-    import('./deployments.js'),
-    import('./scripts.js'),
-    import('./tenants.js'),
-    import('./maintenance_sessions.js'),
-    import('./tasks.js'),
-  ]);
-
-  domainHandlers = {
-    navigation: navigation.navigationHandler,
-    computers: computers.computersHandler,
-    software: software.softwareHandler,
-    deployments: deployments.deploymentsHandler,
-    scripts: scripts.scriptsHandler,
-    tenants: tenants.tenantsHandler,
-    maintenance_sessions: maintenanceSessions.maintenanceSessionsHandler,
-    tasks: tasks.tasksHandler,
-  };
-
-  return domainHandlers;
+/** The handler that lists `toolName`, or undefined if none does. */
+export function getHandlerForTool(toolName: string): DomainHandler | undefined {
+  return HANDLERS.find((handler) => handler.getTools().some((tool) => tool.name === toolName));
 }
 
 /**
- * Get tools for current navigation state
+ * Handle a tool call by routing to the handler that lists the tool.
  */
-export async function getAvailableTools() {
-  const handlers = await loadDomainHandlers();
-  const currentState = getCurrentState();
-
-  if (currentState === 'root') {
-    // Root state: only show navigation tools
-    return handlers.navigation.getTools();
-  } else {
-    // Domain state: show navigation + domain tools
-    const domainHandler = handlers[currentState];
-    if (!domainHandler) {
-      throw new Error(`No handler found for domain: ${currentState}`);
-    }
-
-    return [
-      ...handlers.navigation.getTools(),
-      ...domainHandler.getTools(),
-    ];
+export async function handleToolCall(toolName: string, args: Record<string, unknown>) {
+  const handler = getHandlerForTool(toolName);
+  if (!handler) {
+    return {
+      content: [{ type: 'text' as const, text: `Unknown tool: ${toolName}` }],
+      isError: true,
+    };
   }
-}
-
-/**
- * Handle tool call by routing to appropriate domain handler
- */
-export async function handleToolCall(
-  toolName: string,
-  args: Record<string, unknown>
-) {
-  const handlers = await loadDomainHandlers();
-
-  // Navigation tools are always available
-  if (toolName.startsWith('immybot_navigate') || toolName.startsWith('immybot_back') || toolName.startsWith('immybot_status')) {
-    return handlers.navigation.handleCall(toolName, args);
-  }
-
-  // Route domain-specific tools
-  const currentState = getCurrentState();
-
-  if (currentState === 'root') {
-    throw new Error('Domain-specific tools are not available in root state. Use immybot_navigate first.');
-  }
-
-  const domainHandler = handlers[currentState];
-  if (!domainHandler) {
-    throw new Error(`No handler found for domain: ${currentState}`);
-  }
-
-  return domainHandler.handleCall(toolName, args);
+  return handler.handleCall(toolName, args);
 }

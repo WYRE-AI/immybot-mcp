@@ -6,7 +6,7 @@ MCP server for ImmyBot - Windows endpoint management and software deployment aut
 
 - 🔐 **OAuth 2.0 Authentication** - Microsoft Entra ID client credentials
 - 🏢 **Multi-tenant Support** - Per-instance subdomain configuration  
-- 🧭 **Decision Tree Navigation** - Organized tool discovery by domain
+- 🧭 **Flat Tool List** - Every tool is listed and callable immediately
 - 💻 **Comprehensive Coverage** - Computers, software, deployments, scripts, tenants, maintenance sessions, tasks
 - ⚡ **Gateway Ready** - Stateless per-request operation for WYRE MCP Gateway
 - 🚀 **Docker Deployment** - Container-ready with health checks
@@ -44,13 +44,14 @@ npm install @wyre-ai/immybot-mcp
 npx @wyre-ai/immybot-mcp
 ```
 
-## Navigation
+## Tools
 
-The server uses decision-tree navigation to organize tools by domain:
+Every tool is listed by `tools/list` and callable immediately. There is no
+domain to enter first. The domains below are documentation groupings only.
 
-1. **Start** → `immybot_navigate` → Choose domain
-2. **Domain tools** → Domain-specific operations  
-3. **Return** → `immybot_back` → Main navigation
+> **Upgrading from 1.x?** `immybot_navigate` and `immybot_back` are gone.
+> Call the domain tools directly, for example `immybot_computers_list`.
+> `immybot_status` still works and now lists the tool groups.
 
 ### Available Domains
 
@@ -86,12 +87,9 @@ OAuth scope: `api://{client_id}/.default`
 
 ## Usage Examples
 
-### 1. Navigate to Computers Domain
+### 1. Computers
 
 ```javascript
-// Start navigation
-await callTool('immybot_navigate', { domain: 'computers' });
-
 // List computers
 await callTool('immybot_computers_list', { 
   tenantId: 1,
@@ -105,9 +103,6 @@ await callTool('immybot_computers_get', { computerId: 123 });
 ### 2. Software Management
 
 ```javascript
-// Navigate to software domain
-await callTool('immybot_navigate', { domain: 'software' });
-
 // Search for software
 await callTool('immybot_software_search', { query: 'Chrome' });
 
@@ -122,9 +117,6 @@ await callTool('immybot_software_install', {
 ### 3. Maintenance Sessions
 
 ```javascript
-// Navigate to maintenance sessions
-await callTool('immybot_navigate', { domain: 'maintenance_sessions' });
-
 // Start maintenance session (reconciles deployments)
 await callTool('immybot_maintenance_sessions_start', {
   computerId: 123,
@@ -212,13 +204,11 @@ MCP_TRANSPORT=http MCP_ALLOW_INSECURE_DEV=1 npm start
 
 ## Tools Reference
 
-### Navigation Tools
+### Status Tool
 
 | Tool | Description |
 |------|-------------|
-| `immybot_navigate` | Navigate to domain |
-| `immybot_status` | Show current state |
-| `immybot_back` | Return to main menu |
+| `immybot_status` | Show the tool groups |
 
 ### Computers Tools
 

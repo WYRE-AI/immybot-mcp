@@ -1,6 +1,6 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { getAvailableTools, handleToolCall } from './domains/index.js';
+import { getAllTools, handleToolCall } from './domains/index.js';
 import { setServerRef, clearServerRef } from './utils/server-ref.js';
 import { logger } from './utils/logger.js';
 
@@ -26,7 +26,7 @@ export function createMcpServer(): Server {
   // Tool list handler
   server.setRequestHandler(ListToolsRequestSchema, async (_request, _extra) => {
     try {
-      const tools = await getAvailableTools();
+      const tools = getAllTools();
       logger.debug('Tools listed', { toolCount: tools.length });
 
       return { tools };
@@ -69,17 +69,4 @@ export function createMcpServer(): Server {
   logger.debug('MCP server created');
 
   return server;
-}
-
-/**
- * Send tool list changed notification
- * Used after navigation state changes to update available tools
- */
-export function notifyToolListChanged(server: Server): void {
-  try {
-    server.sendToolListChanged();
-    logger.debug('Tool list changed notification sent');
-  } catch (error: any) {
-    logger.warn('Failed to send tool list changed notification', { error: error.message });
-  }
 }
