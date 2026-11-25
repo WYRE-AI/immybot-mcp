@@ -1,3 +1,10 @@
+## [Unreleased]
+
+### Security
+
+- Patched vulnerable npm dependencies reported by the Trivy image scan (including `proxy-addr`, `hono`, `qs`, `body-parser`, `ip-address`, `@modelcontextprotocol/sdk`).
+- Container image: removed the unused npm CLI from the runtime stage and upgraded Alpine packages (zlib).
+
 ## [1.2.8](https://github.com/wyre-technology/immybot-mcp/compare/v1.2.7...v1.2.8) (2026-07-23)
 
 
